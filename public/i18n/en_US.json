@@ -1,0 +1,88 @@
+{
+    "settings": {
+        "settingsPanel": "Settings Panel",
+        "settingsGroup": {
+            "ai": "AI Settings",
+            "group1": "Tab1",
+            "group2": "Tab2",
+            "reset": "Reset Settings"
+        },
+        "ai": {
+            "provider": {
+                "title": "AI Provider",
+                "description": "Select the AI service provider to use"
+            },
+            "apiKey": {
+                "title": "API Key",
+                "description": "Enter your API key"
+            },
+            "customApiUrl": {
+                "title": "Custom API URL (Optional)",
+                "description": "Only needed when selecting \"Custom API\". Ending with / ignores v1 version, ending with # forces the input address"
+            },
+            "fetchModels": {
+                "title": "Fetch Model List",
+                "description": "Click to fetch available models from API",
+                "label": "Fetch Models",
+                "loading": "Loading..."
+            },
+            "model": {
+                "title": "Model",
+                "description": "Select the model to use"
+            },
+            "temperature": {
+                "title": "Temperature",
+                "description": "Controls randomness of generated text, range 0-1"
+            },
+            "maxTokens": {
+                "title": "Max Tokens",
+                "description": "Limit the maximum number of tokens generated"
+            },
+            "systemPrompt": {
+                "title": "System Prompt",
+                "description": "Set the role and behavior of the AI",
+                "placeholder": "You are a helpful AI assistant."
+            }
+        },
+        "textinput": {
+            "title": "Text Input",
+            "description": "Please enter text content",
+            "value": "Default text content"
+        },
+        "slider": {
+            "title": "Slider Setting",
+            "description": "Drag the slider to adjust the value"
+        },
+        "checkbox": {
+            "title": "Enable Feature",
+            "description": "Check to enable this feature"
+        },
+        "textarea": {
+            "title": "Text Area",
+            "description": "Multi-line text input area",
+            "placeholder": "Enter your text here...",
+            "value": "Default text content"
+        },
+        "hint": {
+            "title": "💡Important Notice",
+            "description": "This is a hint message to provide important information to users."
+        },
+        "select": {
+            "title": "Select Option",
+            "description": "Choose an option from the dropdown list",
+            "options": {
+                "option1": "Option 1",
+                "option2": "Option 2",
+                "option3": "Option 3"
+            }
+        },
+        "reset": {
+            "title": "Reset Settings",
+            "description": "Reset all settings to default values",
+            "label": "Reset",
+            "confirm": "Are you sure you want to reset all settings to default values?",
+            "confirmMessage": "Are you sure you want to reset all settings to default values? This action cannot be undone.",
+            "message": "All settings have been reset to default values"
+        }
+    }
+}

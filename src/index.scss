@@ -1,0 +1,43 @@
+/* AI Sidebar Styles */
+.ai-sidebar {
+  font-family: var(--b3-font-family);
+}
+
+/* 确保代码块样式正确显示 */
+.ai-message__content {
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  
+  code {
+    font-family: var(--b3-font-family-code);
+  }
+}
+
+/* 滚动条样式 */
+.ai-sidebar__messages {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--b3-theme-background);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--b3-theme-on-surface-light);
+    border-radius: 4px;
+    
+    &:hover {
+      background: var(--b3-theme-on-surface);
+    }
+  }
+}
+
+/* 适配移动端 */
+@media (max-width: 768px) {
+  .ai-sidebar {
+    font-size: 14px;
+  }
+}

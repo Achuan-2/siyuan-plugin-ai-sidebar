@@ -1,0 +1,45 @@
+{
+  "name": "siyuan-plugin-templates",
+  "author": "Achuan-2",
+  "url": "https://github.com/Achuan-2/siyuan-plugin-templates",
+  "version": "0.0.1",
+  "minAppVersion": "3.0.12",
+  "backends": [
+    "windows",
+    "linux",
+    "darwin",
+    "docker",
+    "ios",
+    "android",
+    "harmony"
+  ],
+  "frontends": [
+    "desktop",
+    "mobile",
+    "browser-desktop",
+    "browser-mobile",
+    "desktop-window"
+  ],
+  "displayName": {
+    "en_US": "Plugin sample with vite and svelte",
+    "zh_CN": "Achuan-2的插件样例"
+  },
+  "description": {
+    "en_US": "SiYuan plugin sample with vite and svelte",
+    "zh_CN": "使用 vite 和 svelte 开发的思源插件样例"
+  },
+  "readme": {
+    "en_US": "README.md",
+    "zh_CN": "README_zh_CN.md"
+  },
+  "funding": {
+    "custom": [
+      "https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/20241128221208-2024-11-28.png"
+    ]
+  },
+  "keywords": [
+    "plugin",
+    "sample",
+    "插件样例"
+  ]
+}
