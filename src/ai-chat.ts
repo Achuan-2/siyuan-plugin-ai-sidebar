@@ -82,18 +82,18 @@ const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
  */
 function normalizeApiUrl(url: string): { url: string; force: boolean } {
     if (!url) return { url: '', force: false };
-    
+
     const force = url.endsWith('#');
     url = url.replace(/#$/, '');
-    
+
     // 移除末尾的斜杠
     url = url.replace(/\/$/, '');
-    
+
     // 如果不是强制使用，移除 /v1
     if (!force) {
         url = url.replace(/\/v1$/, '');
     }
-    
+
     return { url, force };
 }
 
@@ -101,43 +101,71 @@ function normalizeApiUrl(url: string): { url: string; force: boolean } {
  * 获取模型列表
  */
 export async function fetchModels(
-    provider: AIProvider,
+    provider: string,
     apiKey: string,
     customApiUrl?: string
 ): Promise<ModelInfo[]> {
-    const config = PROVIDER_CONFIGS[provider];
-    let baseUrl = config.baseUrl;
-    
-    if (provider === 'custom' && customApiUrl) {
+    // 检查是否是内置平台
+    const builtInProviders: Record<string, boolean> = {
+        gemini: true,
+        deepseek: true,
+        openai: true,
+        volcano: true
+    };
+
+    let config: ProviderConfig;
+    let baseUrl: string;
+
+    if (builtInProviders[provider]) {
+        config = PROVIDER_CONFIGS[provider as AIProvider];
+        baseUrl = config.baseUrl;
+
+        if (provider === 'custom' && customApiUrl) {
+            const normalized = normalizeApiUrl(customApiUrl);
+            baseUrl = normalized.url;
+        }
+    } else {
+        // 自定义平台
+        if (!customApiUrl) {
+            throw new Error('Custom provider requires API URL');
+        }
+
         const normalized = normalizeApiUrl(customApiUrl);
         baseUrl = normalized.url;
+        config = {
+            name: 'Custom',
+            baseUrl: baseUrl,
+            modelsEndpoint: '/v1/models',
+            chatEndpoint: '/v1/chat/completions',
+            apiKeyHeader: 'Authorization'
+        };
     }
-    
+
     const url = `${baseUrl}${config.modelsEndpoint}`;
-    
+
     try {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json'
         };
-        
+
         // 处理不同平台的认证方式
         if (provider === 'gemini') {
             headers[config.apiKeyHeader] = apiKey;
         } else {
             headers[config.apiKeyHeader] = `Bearer ${apiKey}`;
         }
-        
+
         const response = await fetch(url, {
             method: 'GET',
             headers
         });
-        
+
         if (!response.ok) {
             throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         // 处理不同平台的响应格式
         if (provider === 'gemini') {
             return (data.models || []).map((model: any) => ({
@@ -168,7 +196,7 @@ async function chatOpenAIFormat(
     options: ChatOptions
 ): Promise<void> {
     const url = `${baseUrl}${endpoint}`;
-    
+
     const requestBody = {
         model: options.model,
         messages: options.messages,
@@ -176,23 +204,23 @@ async function chatOpenAIFormat(
         max_tokens: options.maxTokens,
         stream: options.stream !== false
     };
-    
+
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
     };
-    
+
     try {
         const response = await fetch(url, {
             method: 'POST',
             headers,
             body: JSON.stringify(requestBody)
         });
-        
+
         if (!response.ok) {
             throw new Error(`API request failed: ${response.status} ${response.statusText}`);
         }
-        
+
         if (options.stream !== false && response.body) {
             await handleStreamResponse(response.body, options);
         } else {
@@ -218,7 +246,7 @@ async function chatGeminiFormat(
     options: ChatOptions
 ): Promise<void> {
     const url = `${baseUrl}/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`;
-    
+
     // 转换消息格式
     const contents = options.messages
         .filter(msg => msg.role !== 'system')
@@ -226,9 +254,9 @@ async function chatGeminiFormat(
             role: msg.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: msg.content }]
         }));
-    
+
     const systemInstruction = options.messages.find(msg => msg.role === 'system');
-    
+
     const requestBody: any = {
         contents,
         generationConfig: {
@@ -236,13 +264,13 @@ async function chatGeminiFormat(
             maxOutputTokens: options.maxTokens
         }
     };
-    
+
     if (systemInstruction) {
         requestBody.systemInstruction = {
             parts: [{ text: systemInstruction.content }]
         };
     }
-    
+
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -251,11 +279,11 @@ async function chatGeminiFormat(
             },
             body: JSON.stringify(requestBody)
         });
-        
+
         if (!response.ok) {
             throw new Error(`API request failed: ${response.status} ${response.statusText}`);
         }
-        
+
         if (response.body) {
             await handleGeminiStreamResponse(response.body, options);
         }
@@ -277,26 +305,26 @@ async function handleStreamResponse(
     const decoder = new TextDecoder();
     let fullText = '';
     let buffer = '';
-    
+
     try {
         while (true) {
             const { done, value } = await reader.read();
-            
+
             if (done) break;
-            
+
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
-            
+
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed || trimmed === 'data: [DONE]') continue;
-                
+
                 if (trimmed.startsWith('data: ')) {
                     try {
                         const json = JSON.parse(trimmed.slice(6));
                         const content = json.choices?.[0]?.delta?.content;
-                        
+
                         if (content) {
                             fullText += content;
                             options.onChunk?.(content);
@@ -307,7 +335,7 @@ async function handleStreamResponse(
                 }
             }
         }
-        
+
         options.onComplete?.(fullText);
     } catch (error) {
         console.error('Stream reading error:', error);
@@ -327,25 +355,25 @@ async function handleGeminiStreamResponse(
     const decoder = new TextDecoder();
     let fullText = '';
     let buffer = '';
-    
+
     try {
         while (true) {
             const { done, value } = await reader.read();
-            
+
             if (done) break;
-            
+
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
-            
+
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed || !trimmed.startsWith('data: ')) continue;
-                
+
                 try {
                     const json = JSON.parse(trimmed.slice(6));
                     const content = json.candidates?.[0]?.content?.parts?.[0]?.text;
-                    
+
                     if (content) {
                         fullText += content;
                         options.onChunk?.(content);
@@ -355,7 +383,7 @@ async function handleGeminiStreamResponse(
                 }
             }
         }
-        
+
         options.onComplete?.(fullText);
     } catch (error) {
         console.error('Gemini stream reading error:', error);
@@ -368,18 +396,47 @@ async function handleGeminiStreamResponse(
  * 发送聊天请求
  */
 export async function chat(
-    provider: AIProvider,
+    provider: string,
     options: ChatOptions,
     customApiUrl?: string
 ): Promise<void> {
-    const config = PROVIDER_CONFIGS[provider];
-    let baseUrl = config.baseUrl;
-    
-    if (provider === 'custom' && customApiUrl) {
+    // 检查是否是内置平台
+    const builtInProviders: Record<string, boolean> = {
+        gemini: true,
+        deepseek: true,
+        openai: true,
+        volcano: true
+    };
+
+    let config: ProviderConfig;
+    let baseUrl: string;
+
+    if (builtInProviders[provider]) {
+        // 使用内置平台配置
+        config = PROVIDER_CONFIGS[provider as AIProvider];
+        baseUrl = config.baseUrl;
+
+        if (provider === 'custom' && customApiUrl) {
+            const normalized = normalizeApiUrl(customApiUrl);
+            baseUrl = normalized.url;
+        }
+    } else {
+        // 自定义平台，使用OpenAI兼容格式
+        if (!customApiUrl) {
+            throw new Error('Custom provider requires API URL');
+        }
+
         const normalized = normalizeApiUrl(customApiUrl);
         baseUrl = normalized.url;
+        config = {
+            name: 'Custom',
+            baseUrl: baseUrl,
+            modelsEndpoint: '/v1/models',
+            chatEndpoint: '/v1/chat/completions',
+            apiKeyHeader: 'Authorization'
+        };
     }
-    
+
     if (provider === 'gemini') {
         await chatGeminiFormat(baseUrl, options.apiKey, options.model, options);
     } else {
@@ -394,7 +451,7 @@ export function estimateTokens(text: string): number {
     const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
     const englishWords = (text.match(/[a-zA-Z]+/g) || []).length;
     const otherChars = text.length - chineseChars - text.match(/[a-zA-Z\s]/g)?.length || 0;
-    
+
     return Math.ceil(chineseChars * 1.5 + englishWords + otherChars * 0.5);
 }
 

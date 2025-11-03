@@ -3,9 +3,11 @@
     import SettingPanel from '@/libs/components/setting-panel.svelte';
     import { t } from './utils/i18n';
     import { getDefaultSettings } from './defaultSettings';
-    import { pushMsg, pushErrMsg } from './api';
+    import { pushMsg } from './api';
     import { confirm } from 'siyuan';
-    import { fetchModels, type AIProvider } from './ai-chat';
+    import ProviderConfigPanel from './components/ProviderConfigPanel.svelte';
+    import CustomProviderManager from './components/CustomProviderManager.svelte';
+    import type { CustomProviderConfig } from './defaultSettings';
     export let plugin;
 
     // 使用动态默认设置
@@ -17,130 +19,65 @@
         //  Type："checkbox" | "select" | "textinput" | "textarea" | "number" | "slider" | "button" | "hint" | "custom";
     }
 
-    // 存储可用模型列表
-    let availableModels: string[] = [];
-    let isLoadingModels = false;
+    const builtInProviderNames: Record<string, string> = {
+        gemini: 'Google Gemini',
+        deepseek: 'DeepSeek',
+        openai: 'OpenAI',
+        volcano: '火山引擎',
+    };
 
-    // 获取模型列表
-    async function loadModels() {
-        if (!settings.aiApiKey) {
-            pushErrMsg('请先设置 API Key');
-            return;
-        }
-        
-        isLoadingModels = true;
-        try {
-            const models = await fetchModels(
-                settings.aiProvider as AIProvider,
-                settings.aiApiKey,
-                settings.aiCustomApiUrl
-            );
-            availableModels = models.map(m => m.id);
-            pushMsg(`成功获取 ${models.length} 个模型`);
-            
-            // 更新模型选项
-            updateAIModelOptions();
-        } catch (error) {
-            pushErrMsg(`获取模型失败: ${error.message}`);
-            console.error('Load models error:', error);
-        } finally {
-            isLoadingModels = false;
-        }
+    // 当前选中的平台ID
+    let selectedProviderId = '';
+
+    function handleProviderChange() {
+        saveSettings();
     }
 
-    // 更新AI模型选项
-    function updateAIModelOptions() {
-        const aiGroup = groups.find(g => g.name === 'AI 设置');
-        if (aiGroup) {
-            const modelItem = aiGroup.items.find(item => item.key === 'aiModel');
-            if (modelItem && modelItem.type === 'select') {
-                const options: Record<string, string> = {};
-                if (availableModels.length > 0) {
-                    availableModels.forEach(model => {
-                        options[model] = model;
-                    });
-                } else {
-                    options[''] = '请先获取模型列表';
-                }
-                modelItem.options = options;
-                // 触发响应式更新
-                groups = [...groups];
-            }
+    function handleCustomProvidersChange() {
+        saveSettings();
+    }
+
+    // 获取所有平台选项（内置+自定义）
+    function getAllProviderOptions(): Array<{ id: string; name: string }> {
+        const builtIn = Object.keys(builtInProviderNames).map(id => ({
+            id,
+            name: builtInProviderNames[id],
+        }));
+
+        const custom = (settings.aiProviders?.customProviders || []).map(
+            (p: CustomProviderConfig) => ({
+                id: p.id,
+                name: p.name,
+            })
+        );
+
+        return [...builtIn, ...custom];
+    }
+
+    // 获取当前选中平台的名称
+    function getSelectedProviderName(): string {
+        if (!selectedProviderId) return '请选择平台';
+
+        if (builtInProviderNames[selectedProviderId]) {
+            return builtInProviderNames[selectedProviderId];
         }
+
+        const customProvider = settings.aiProviders?.customProviders?.find(
+            (p: CustomProviderConfig) => p.id === selectedProviderId
+        );
+        return customProvider?.name || '未知平台';
+    }
+
+    // 保存选中的平台ID
+    function handleProviderSelect() {
+        settings.selectedProviderId = selectedProviderId;
+        saveSettings();
     }
 
     let groups: ISettingGroup[] = [
         {
-            name: 'AI 设置',
+            name: 'AI 平台配置',
             items: [
-                {
-                    key: 'aiProvider',
-                    value: settings.aiProvider,
-                    type: 'select',
-                    title: 'AI 平台',
-                    description: '选择要使用的AI服务提供商',
-                    options: {
-                        'gemini': 'Google Gemini',
-                        'deepseek': 'DeepSeek',
-                        'openai': 'OpenAI',
-                        'volcano': '火山引擎',
-                        'custom': '自定义 API'
-                    }
-                },
-                {
-                    key: 'aiApiKey',
-                    value: settings.aiApiKey,
-                    type: 'textinput',
-                    title: 'API Key',
-                    description: '输入你的 API 密钥',
-                },
-                {
-                    key: 'aiCustomApiUrl',
-                    value: settings.aiCustomApiUrl,
-                    type: 'textinput',
-                    title: '自定义 API 地址（可选）',
-                    description: '仅在选择"自定义 API"时需要。以 / 结尾忽略 v1 版本，以 # 结尾强制使用输入地址',
-                },
-                {
-                    key: 'fetchModels',
-                    value: '',
-                    type: 'button',
-                    title: '获取模型列表',
-                    description: '点击按钮从API获取可用的模型列表',
-                    button: {
-                        label: isLoadingModels ? '获取中...' : '获取模型',
-                        callback: loadModels
-                    }
-                },
-                {
-                    key: 'aiModel',
-                    value: settings.aiModel,
-                    type: 'select',
-                    title: '模型',
-                    description: '选择要使用的模型',
-                    options: {
-                        '': '请先获取模型列表'
-                    }
-                },
-                {
-                    key: 'aiTemperature',
-                    value: settings.aiTemperature,
-                    type: 'slider',
-                    title: '温度 (Temperature)',
-                    description: '控制生成文本的随机性，范围 0-1',
-                    slider: {
-                        min: 0,
-                        max: 1,
-                        step: 0.1
-                    }
-                },
-                {
-                    key: 'aiMaxTokens',
-                    value: settings.aiMaxTokens,
-                    type: 'number',
-                    title: '最大 Tokens',
-                    description: '限制生成的最大 token 数量',
-                },
                 {
                     key: 'aiSystemPrompt',
                     value: settings.aiSystemPrompt,
@@ -149,73 +86,15 @@
                     description: '设置 AI 的角色和行为',
                     direction: 'row',
                     rows: 4,
-                    placeholder: 'You are a helpful AI assistant.'
-                }
-            ]
-        },
-        {
-            name: t('settings.settingsGroup.group1') || 'Tab1',
-            items: [
+                    placeholder: 'You are a helpful AI assistant.',
+                },
                 {
-                    key: 'hint',
+                    key: 'aiProvidersHint',
                     value: '',
                     type: 'hint',
-                    title: t('settings.hint.title'),
-                    description: t('settings.hint.description'),
-                },
-                {
-                    key: 'textinput',
-                    value: settings.textinput,
-                    type: 'textinput',
-                    title: t('settings.textinput.title'),
-                    description: t('settings.textinput.description'),
-                },
-                {
-                    key: 'slider',
-                    value: settings.slider,
-                    type: 'slider',
-                    title: t('settings.slider.title'),
-                    description: t('settings.slider.description'),
-                    slider: {
-                        min: 0,
-                        max: 1,
-                        step: 0.1,
-                    },
-                },
-            ],
-        },
-        {
-            name: t('settings.settingsGroup.group2') || 'Tab2',
-            items: [
-                {
-                    key: 'checkbox',
-                    value: settings.checkbox,
-                    type: 'checkbox',
-                    title: t('settings.checkbox.title'),
-                    description: t('settings.checkbox.description'),
-                },
-                // 'textarea'
-                {
-                    key: 'textarea',
-                    value: settings.textarea,
-                    type: 'textarea',
-                    title: t('settings.textarea.title'),
-                    description: t('settings.textarea.description'),
-                    direction: 'row',
-                    rows: 6,
-                    placeholder: t('settings.textarea.placeholder'),
-                },
-                {
-                    key: 'select',
-                    value: settings.select,
-                    type: 'select',
-                    title: t('settings.select.title'),
-                    description: t('settings.select.description'),
-                    options: {
-                        option1: t('settings.select.options.option1'),
-                        option2: t('settings.select.options.option2'),
-                        option3: t('settings.select.options.option3'),
-                    },
+                    title: '平台配置说明',
+                    description:
+                        '为每个AI平台配置API Key，然后获取并添加模型。支持每个平台配置多个模型，每个模型可以设置独立的参数。',
                 },
             ],
         },
@@ -283,6 +162,26 @@
     async function runload() {
         const loadedSettings = await plugin.loadSettings();
         settings = { ...loadedSettings };
+
+        // 确保 aiProviders 存在
+        if (!settings.aiProviders) {
+            settings.aiProviders = {
+                gemini: { apiKey: '', customApiUrl: '', models: [] },
+                deepseek: { apiKey: '', customApiUrl: '', models: [] },
+                openai: { apiKey: '', customApiUrl: '', models: [] },
+                volcano: { apiKey: '', customApiUrl: '', models: [] },
+                customProviders: [],
+            };
+        }
+
+        // 确保 customProviders 数组存在
+        if (!settings.aiProviders.customProviders) {
+            settings.aiProviders.customProviders = [];
+        }
+
+        // 恢复选中的平台ID
+        selectedProviderId = settings.selectedProviderId || 'openai';
+
         updateGroupItems();
         // 确保设置已保存（可能包含新的默认值）
         await saveSettings();
@@ -319,12 +218,71 @@
         {/each}
     </ul>
     <div class="config__tab-wrap">
-        <SettingPanel
-            group={currentGroup?.name || ''}
-            settingItems={currentGroup?.items || []}
-            display={true}
-            on:changed={onChanged}
-        />
+        {#if focusGroup === 'AI 平台配置'}
+            <div class="ai-config-panel">
+                <SettingPanel
+                    group={currentGroup?.name || ''}
+                    settingItems={currentGroup?.items || []}
+                    display={true}
+                    on:changed={onChanged}
+                />
+
+                <div class="provider-configs">
+                    <!-- 自定义平台管理 -->
+                    <CustomProviderManager
+                        bind:customProviders={settings.aiProviders.customProviders}
+                        on:change={handleCustomProvidersChange}
+                    />
+
+                    <!-- 平台选择下拉框 -->
+                    <div class="provider-selector">
+                        <div class="b3-label">
+                            <div class="b3-label__text">选择要配置的平台</div>
+                            <select
+                                class="b3-select fn__flex-1"
+                                bind:value={selectedProviderId}
+                                on:change={handleProviderSelect}
+                            >
+                                <option value="" disabled>请选择平台</option>
+                                {#each getAllProviderOptions() as option}
+                                    <option value={option.id}>{option.name}</option>
+                                {/each}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 显示选中平台的配置 -->
+                    {#if selectedProviderId}
+                        {#if builtInProviderNames[selectedProviderId]}
+                            <ProviderConfigPanel
+                                providerId={selectedProviderId}
+                                providerName={getSelectedProviderName()}
+                                bind:config={settings.aiProviders[selectedProviderId]}
+                                on:change={handleProviderChange}
+                            />
+                        {:else}
+                            {#each settings.aiProviders.customProviders as customProvider}
+                                {#if customProvider.id === selectedProviderId}
+                                    <ProviderConfigPanel
+                                        providerId={customProvider.id}
+                                        providerName={customProvider.name}
+                                        bind:config={customProvider}
+                                        on:change={handleProviderChange}
+                                    />
+                                {/if}
+                            {/each}
+                        {/if}
+                    {/if}
+                </div>
+            </div>
+        {:else}
+            <SettingPanel
+                group={currentGroup?.name || ''}
+                settingItems={currentGroup?.items || []}
+                display={true}
+                on:changed={onChanged}
+            />
+        {/if}
     </div>
 </div>
 
@@ -344,5 +302,24 @@
         height: 100%;
         overflow: auto;
         padding: 2px;
+    }
+
+    .ai-config-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .provider-configs {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .provider-selector {
+        background: var(--b3-theme-surface);
+        border-radius: 6px;
+        padding: 16px;
     }
 </style>

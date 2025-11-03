@@ -27,6 +27,7 @@ import { getDefaultSettings } from "./defaultSettings";
 import { setPluginInstance, t } from "./utils/i18n";
 import LoadingDialog from "./components/LoadingDialog.svelte";
 import AISidebar from "./ai-sidebar.svelte";
+import { updateSettings } from "./stores/settings";
 
 export const SETTINGS_FILE = "settings.json";
 
@@ -116,7 +117,10 @@ export default class PluginSample extends Plugin {
     async loadSettings() {
         const settings = await this.loadData(SETTINGS_FILE);
         const defaultSettings = getDefaultSettings();
-        return { ...defaultSettings, ...settings };
+        const mergedSettings = { ...defaultSettings, ...settings };
+        // 更新 store
+        updateSettings(mergedSettings);
+        return mergedSettings;
     }
 
     /**
@@ -124,6 +128,8 @@ export default class PluginSample extends Plugin {
      */
     async saveSettings(settings: any) {
         await this.saveData(SETTINGS_FILE, settings);
+        // 更新 store，通知所有订阅者
+        updateSettings(settings);
     }
 
 
