@@ -996,14 +996,21 @@
             // 获取块的Markdown内容
             const data = await exportMdContent(blockId, false, false, 2, 0, false);
             if (data && data.content) {
+                // 从块内容中提取前20个字作为显示标题
+                const contentPreview = data.content.replace(/\n/g, ' ').trim();
+                const displayTitle = contentPreview.length > 20 
+                    ? contentPreview.substring(0, 20) + '...' 
+                    : contentPreview || '块内容';
+                
                 contextDocuments = [
                     ...contextDocuments,
                     {
                         id: blockId,
-                        title: blockTitle || '块内容',
+                        title: displayTitle,
                         content: data.content,
                     },
                 ];
+                pushMsg(`已添加块内容: ${displayTitle}`);
             }
         } catch (error) {
             console.error('Add block error:', error);
@@ -1391,65 +1398,6 @@
             </button>
         </div>
     </div>
-
-    <!-- 上下文文档和附件列表 -->
-    {#if contextDocuments.length > 0 || currentAttachments.length > 0}
-        <div class="ai-sidebar__context-docs">
-            <div class="ai-sidebar__context-docs-title">📌上下文内容</div>
-            <div class="ai-sidebar__context-docs-list">
-                <!-- 显示上下文文档 -->
-                {#each contextDocuments as doc (doc.id)}
-                    <div class="ai-sidebar__context-doc-item">
-                        <button
-                            class="ai-sidebar__context-doc-remove"
-                            on:click={() => removeContextDocument(doc.id)}
-                            title="移除文档"
-                        >
-                            ×
-                        </button>
-                        <button
-                            class="ai-sidebar__context-doc-link"
-                            on:click={() => openDocument(doc.id)}
-                            title="点击查看文档"
-                        >
-                            📄 {doc.title}
-                        </button>
-                    </div>
-                {/each}
-
-                <!-- 显示当前附件 -->
-                {#each currentAttachments as attachment, index}
-                    <div class="ai-sidebar__context-doc-item">
-                        <button
-                            class="ai-sidebar__context-doc-remove"
-                            on:click={() => removeAttachment(index)}
-                            title="移除附件"
-                        >
-                            ×
-                        </button>
-                        {#if attachment.type === 'image'}
-                            <img
-                                src={attachment.data}
-                                alt={attachment.name}
-                                class="ai-sidebar__context-attachment-preview"
-                                title={attachment.name}
-                            />
-                            <span class="ai-sidebar__context-doc-name" title={attachment.name}>
-                                🖼️ {attachment.name}
-                            </span>
-                        {:else}
-                            <svg class="ai-sidebar__context-attachment-icon">
-                                <use xlink:href="#iconFile"></use>
-                            </svg>
-                            <span class="ai-sidebar__context-doc-name" title={attachment.name}>
-                                📄 {attachment.name}
-                            </span>
-                        {/if}
-                    </div>
-                {/each}
-            </div>
-        </div>
-    {/if}
 
     <div
         class="ai-sidebar__messages"
