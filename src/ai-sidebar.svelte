@@ -1679,32 +1679,34 @@
         on:drop={handleDrop}
     >
         <div class="ai-sidebar__input-row">
-            <textarea
-                bind:this={textareaElement}
-                bind:value={currentInput}
-                on:keydown={handleKeydown}
-                on:paste={handlePaste}
-                placeholder="输入消息... (Ctrl+Enter 发送，可拖入文档、块或粘贴图片)"
-                class="ai-sidebar__input"
-                disabled={isLoading}
-                rows="1"
-            ></textarea>
-            <button
-                class="b3-button ai-sidebar__send-btn"
-                class:b3-button--primary={!isLoading}
-                class:ai-sidebar__send-btn--abort={isLoading}
-                on:click={isLoading ? abortMessage : sendMessage}
-                disabled={!isLoading && !currentInput.trim() && currentAttachments.length === 0}
-                title={isLoading ? '中断生成 (Ctrl+Enter)' : '发送消息 (Ctrl+Enter)'}
-            >
-                {#if isLoading}
-                    <svg class="b3-button__icon">
-                        <use xlink:href="#iconPause"></use>
-                    </svg>
-                {:else}
-                    <svg class="b3-button__icon"><use xlink:href="#iconUp"></use></svg>
-                {/if}
-            </button>
+            <div class="ai-sidebar__input-wrapper">
+                <textarea
+                    bind:this={textareaElement}
+                    bind:value={currentInput}
+                    on:keydown={handleKeydown}
+                    on:paste={handlePaste}
+                    placeholder="输入消息... (Ctrl+Enter 发送，可拖入文档、块或粘贴图片)"
+                    class="ai-sidebar__input"
+                    disabled={isLoading}
+                    rows="1"
+                ></textarea>
+                <button
+                    class="b3-button ai-sidebar__send-btn"
+                    class:b3-button--primary={!isLoading}
+                    class:ai-sidebar__send-btn--abort={isLoading}
+                    on:click={isLoading ? abortMessage : sendMessage}
+                    disabled={!isLoading && !currentInput.trim() && currentAttachments.length === 0}
+                    title={isLoading ? '中断生成 (Ctrl+Enter)' : '发送消息 (Ctrl+Enter)'}
+                >
+                    {#if isLoading}
+                        <svg class="b3-button__icon">
+                            <use xlink:href="#iconPause"></use>
+                        </svg>
+                    {:else}
+                        <svg class="b3-button__icon"><use xlink:href="#iconUp"></use></svg>
+                    {/if}
+                </button>
+            </div>
         </div>
 
         <!-- 隐藏的文件上传 input -->
@@ -1963,7 +1965,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 12px 16px;
+        padding: 8px 12px;
         border-bottom: 1px solid var(--b3-border-color);
         flex-shrink: 0;
     }
@@ -1991,7 +1993,7 @@
     }
 
     .ai-sidebar__context-docs {
-        padding: 12px 16px;
+        padding: 8px 12px;
         background: var(--b3-theme-surface);
         border-top: 1px solid var(--b3-border-color);
         flex-shrink: 0;
@@ -2089,10 +2091,10 @@
         flex: 1;
         position: relative;
         overflow-y: auto;
-        padding: 16px;
+        padding: 12px;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
         transition: background-color 0.2s;
 
         &.ai-sidebar__messages--drag-over {
@@ -2258,7 +2260,7 @@
     }
 
     .ai-message__content {
-        padding: 12px;
+        padding: 10px 12px;
         border-radius: 8px;
         line-height: 1.6;
         word-wrap: break-word;
@@ -2435,8 +2437,8 @@
     .ai-sidebar__input-container {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        padding: 12px 16px;
+        gap: 6px;
+        padding: 8px 12px;
         border-top: 1px solid var(--b3-border-color);
         background: var(--b3-theme-background);
         flex-shrink: 0;
@@ -2446,39 +2448,63 @@
 
     .ai-sidebar__input-row {
         display: flex;
-        gap: 8px;
+        gap: 0;
+    }
+
+    .ai-sidebar__input-wrapper {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 12px;
+        background: var(--b3-theme-background);
+        transition: border-color 0.2s;
+
+        &:focus-within {
+            border-color: var(--b3-theme-primary);
+        }
+
+        &:hover {
+            border-color: var(--b3-theme-primary-light);
+        }
     }
 
     .ai-sidebar__input {
         flex: 1;
         resize: none;
-        border: 1px solid var(--b3-border-color);
-        border-radius: 6px;
-        padding: 10px 12px;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 16px;
+        padding-right: 48px; /* 为发送按钮留出空间 */
         font-family: var(--b3-font-family);
         font-size: 14px;
         line-height: 1.5;
-        background: var(--b3-theme-background);
+        background: transparent;
         color: var(--b3-theme-on-background);
-        min-height: 40px;
+        min-height: 44px;
         max-height: 200px;
         overflow-y: auto;
 
         &:focus {
             outline: none;
-            border-color: var(--b3-theme-primary);
         }
 
         &:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
+
+        &::placeholder {
+            color: var(--b3-theme-on-surface-light);
+        }
     }
 
     .ai-sidebar__bottom-row {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        margin-top: 2px;
     }
 
     .ai-sidebar__upload-btn,
@@ -2670,14 +2696,27 @@
     }
 
     .ai-sidebar__send-btn {
-        align-self: flex-end;
-        min-width: 40px;
-        height: 40px;
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 50%;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: all 0.2s ease;
 
         &:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
+        }
+
+        &:not(:disabled):hover {
+            transform: scale(1.05);
         }
 
         &.ai-sidebar__send-btn--abort {
@@ -2687,6 +2726,11 @@
             &:hover {
                 background-color: #dc2626;
             }
+        }
+
+        .b3-button__icon {
+            width: 18px;
+            height: 18px;
         }
     }
 
@@ -2968,7 +3012,7 @@
     // 响应式布局
     @media (max-width: 768px) {
         .ai-sidebar__header {
-            padding: 8px 12px;
+            padding: 6px 10px;
         }
 
         .ai-sidebar__title {
@@ -2976,8 +3020,8 @@
         }
 
         .ai-sidebar__messages {
-            padding: 12px;
-            gap: 12px;
+            padding: 10px;
+            gap: 10px;
         }
 
         .ai-message--user .ai-message__content {
@@ -2989,7 +3033,23 @@
         }
 
         .ai-sidebar__input-container {
-            padding: 8px 12px;
+            padding: 6px 10px;
+        }
+
+        .ai-sidebar__input {
+            padding: 10px 14px;
+            padding-right: 46px;
+        }
+
+        .ai-sidebar__send-btn {
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+
+            .b3-button__icon {
+                width: 16px;
+                height: 16px;
+            }
         }
     }
 
@@ -3001,11 +3061,26 @@
 
         .ai-message__content {
             font-size: 13px;
-            padding: 10px;
+            padding: 8px 10px;
         }
 
         .ai-sidebar__input {
             font-size: 13px;
+            padding: 8px 12px;
+            padding-right: 42px;
+        }
+
+        .ai-sidebar__send-btn {
+            width: 30px;
+            height: 30px;
+            min-width: 30px;
+            right: 5px;
+            bottom: 5px;
+
+            .b3-button__icon {
+                width: 14px;
+                height: 14px;
+            }
         }
     }
 </style>
