@@ -2497,6 +2497,19 @@
         flex: 1;
         display: flex;
         justify-content: flex-end;
+        /* 保证在 flex 布局中可以缩小，避免在窄宽度下溢出 */
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+
+        /* 子元素允许缩小并对长文本进行省略处理，防止撑开容器 */
+        & > * {
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     }
 
     // 消息附件样式
