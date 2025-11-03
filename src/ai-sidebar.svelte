@@ -256,7 +256,7 @@
 
         // 用户消息只保存原始输入（不包含文档内容）
         const userContent = currentInput.trim();
-        
+
         const userMessage: Message = {
             role: 'user',
             content: userContent,
@@ -272,7 +272,7 @@
 
         // 准备发送给AI的消息（包含系统提示词和上下文文档）
         const messagesToSend = messages.filter(msg => msg.role !== 'system');
-        
+
         // 如果有上下文文档，将其添加到最后一条用户消息中（仅用于发送给AI）
         if (contextDocuments.length > 0 && messagesToSend.length > 0) {
             const lastMessage = messagesToSend[messagesToSend.length - 1];
@@ -283,7 +283,7 @@
                 lastMessage.content = `以下是相关文档作为上下文：\n\n${contextText}\n\n---\n\n我的问题：${userContent}`;
             }
         }
-        
+
         if (settings.aiSystemPrompt) {
             messagesToSend.unshift({ role: 'system', content: settings.aiSystemPrompt });
         }
@@ -420,10 +420,13 @@
         try {
             // 将空格分隔的关键词转换为 SQL LIKE 查询
             // 转义单引号以防止SQL注入
-            const keywords = searchKeyword.trim().split(/\s+/).map(kw => kw.replace(/'/g, "''"));
+            const keywords = searchKeyword
+                .trim()
+                .split(/\s+/)
+                .map(kw => kw.replace(/'/g, "''"));
             const conditions = keywords.map(kw => `content LIKE '%${kw}%'`).join(' AND ');
             const sqlQuery = `SELECT * FROM blocks WHERE ${conditions} AND type = 'd' ORDER BY updated DESC LIMIT 20`;
-            
+
             const results = await sql(sqlQuery);
             searchResults = results || [];
         } catch (error) {
@@ -477,11 +480,14 @@
             // 获取文档内容
             const data = await exportMdContent(docId, false, false, 2, 0, false);
             if (data && data.content) {
-                contextDocuments = [...contextDocuments, {
-                    id: docId,
-                    title: docTitle,
-                    content: data.content
-                }];
+                contextDocuments = [
+                    ...contextDocuments,
+                    {
+                        id: docId,
+                        title: docTitle,
+                        content: data.content,
+                    },
+                ];
                 pushMsg(`已添加文档: ${docTitle}`);
                 isSearchDialogOpen = false;
                 searchKeyword = '';
@@ -518,7 +524,7 @@
     function getFocusedBlockId(): string | null {
         const protyle = getProtyle();
         if (!protyle) return null;
-        
+
         // 获取ID：当有聚焦块时获取聚焦块ID，否则获取文档ID
         return protyle.block?.id || protyle.options?.blockId || protyle.block?.parentID || null;
     }
@@ -540,7 +546,7 @@
                 const block = blocks[0];
                 let docId = targetBlockId;
                 let docTitle = block.content || '未命名文档';
-                
+
                 // 如果是文档块，直接添加
                 if (block.type === 'd') {
                     await addDocumentToContext(docId, docTitle);
@@ -567,11 +573,14 @@
             // 获取块的Markdown内容
             const data = await exportMdContent(blockId, false, false, 2, 0, false);
             if (data && data.content) {
-                contextDocuments = [...contextDocuments, {
-                    id: blockId,
-                    title: blockTitle || '块内容',
-                    content: data.content
-                }];
+                contextDocuments = [
+                    ...contextDocuments,
+                    {
+                        id: blockId,
+                        title: blockTitle || '块内容',
+                        content: data.content,
+                    },
+                ];
                 pushMsg(`已添加块: ${blockTitle}`);
             }
         } catch (error) {
@@ -864,8 +873,8 @@
         </div>
     {/if}
 
-    <div 
-        class="ai-sidebar__messages" 
+    <div
+        class="ai-sidebar__messages"
         class:ai-sidebar__messages--drag-over={isDragOver}
         bind:this={messagesContainer}
         on:dragover={handleDragOver}
@@ -919,7 +928,7 @@
         {/if}
     </div>
 
-    <div 
+    <div
         class="ai-sidebar__input-container"
         bind:this={inputContainer}
         on:dragover={handleDragOver}
@@ -973,7 +982,10 @@
     <!-- 搜索对话框 -->
     {#if isSearchDialogOpen}
         <div class="ai-sidebar__search-dialog">
-            <div class="ai-sidebar__search-dialog-overlay" on:click={() => (isSearchDialogOpen = false)}></div>
+            <div
+                class="ai-sidebar__search-dialog-overlay"
+                on:click={() => (isSearchDialogOpen = false)}
+            ></div>
             <div class="ai-sidebar__search-dialog-content">
                 <div class="ai-sidebar__search-dialog-header">
                     <h4>搜索文档</h4>
@@ -1011,7 +1023,8 @@
                                     </div>
                                     <button
                                         class="b3-button b3-button--text"
-                                        on:click={() => addDocumentToContext(result.id, result.content)}
+                                        on:click={() =>
+                                            addDocumentToContext(result.id, result.content)}
                                     >
                                         添加
                                     </button>
