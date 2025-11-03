@@ -42,6 +42,20 @@
     let isDragOver = false;
     let searchTimeout: number | null = null;
 
+    // 提示词管理
+    interface Prompt {
+        id: string;
+        title: string;
+        content: string;
+        createdAt: number;
+    }
+    let prompts: Prompt[] = [];
+    let isPromptManagerOpen = false;
+    let isPromptSelectorOpen = false;
+    let editingPrompt: Prompt | null = null;
+    let newPromptTitle = '';
+    let newPromptContent = '';
+
     // 会话管理
     let sessions: ChatSession[] = [];
     let currentSessionId: string = '';
@@ -69,6 +83,9 @@
 
         // 加载历史会话
         await loadSessions();
+
+        // 加载提示词
+        await loadPrompts();
 
         // 如果有系统提示词，添加到消息列表
         if (settings.aiSystemPrompt) {
@@ -104,6 +121,9 @@
                 console.debug('AI Sidebar: 设置已更新');
             }
         });
+
+        // 添加全局点击事件监听器
+        document.addEventListener('click', handleClickOutside);
     });
 
     onDestroy(() => {
@@ -111,6 +131,9 @@
         if (unsubscribe) {
             unsubscribe();
         }
+
+        // 移除全局点击事件监听器
+        document.removeEventListener('click', handleClickOutside);
     });
 
     // 迁移旧设置到新结构
@@ -899,6 +922,122 @@
     function openSettings() {
         plugin.openSetting();
     }
+
+    // 提示词管理函数
+    async function loadPrompts() {
+        try {
+            const data = await plugin.loadData('prompts.json');
+            prompts = data?.prompts || [];
+        } catch (error) {
+            console.error('Load prompts error:', error);
+            prompts = [];
+        }
+    }
+
+    async function savePrompts() {
+        try {
+            await plugin.saveData('prompts.json', { prompts });
+        } catch (error) {
+            console.error('Save prompts error:', error);
+            pushErrMsg('保存提示词失败');
+        }
+    }
+
+    function openPromptManager() {
+        isPromptSelectorOpen = false;
+        isPromptManagerOpen = true;
+        editingPrompt = null;
+        newPromptTitle = '';
+        newPromptContent = '';
+    }
+
+    function closePromptManager() {
+        isPromptManagerOpen = false;
+        editingPrompt = null;
+        newPromptTitle = '';
+        newPromptContent = '';
+    }
+
+    async function saveNewPrompt() {
+        if (!newPromptTitle.trim() || !newPromptContent.trim()) {
+            pushErrMsg('标题和内容不能为空');
+            return;
+        }
+
+        const now = Date.now();
+        if (editingPrompt) {
+            // 编辑现有提示词
+            const index = prompts.findIndex(p => p.id === editingPrompt.id);
+            if (index >= 0) {
+                prompts[index] = {
+                    ...prompts[index],
+                    title: newPromptTitle.trim(),
+                    content: newPromptContent.trim(),
+                };
+                prompts = [...prompts];
+                pushMsg('提示词已更新');
+            }
+        } else {
+            // 创建新提示词
+            const newPrompt: Prompt = {
+                id: `prompt_${now}`,
+                title: newPromptTitle.trim(),
+                content: newPromptContent.trim(),
+                createdAt: now,
+            };
+            prompts = [newPrompt, ...prompts];
+            pushMsg('提示词已保存');
+        }
+
+        await savePrompts();
+        closePromptManager();
+    }
+
+    function editPrompt(prompt: Prompt) {
+        editingPrompt = prompt;
+        newPromptTitle = prompt.title;
+        newPromptContent = prompt.content;
+        isPromptSelectorOpen = false;
+        isPromptManagerOpen = true;
+    }
+
+    async function deletePrompt(promptId: string) {
+        confirm('删除提示词', '确定要删除这个提示词吗？', async () => {
+            prompts = prompts.filter(p => p.id !== promptId);
+            await savePrompts();
+            pushMsg('提示词已删除');
+        });
+    }
+
+    function usePrompt(prompt: Prompt) {
+        currentInput = prompt.content;
+        isPromptSelectorOpen = false;
+        tick().then(() => {
+            autoResizeTextarea();
+            textareaElement?.focus();
+        });
+        pushMsg(`已使用提示词: ${prompt.title}`);
+    }
+
+    // 点击外部关闭提示词选择器
+    function handleClickOutside(event: MouseEvent) {
+        if (isPromptSelectorOpen) {
+            const target = event.target as HTMLElement;
+            const selector = document.querySelector('.ai-sidebar__prompt-selector');
+            const buttons = document.querySelectorAll('.ai-sidebar__prompt-actions button');
+
+            let clickedButton = false;
+            buttons.forEach(button => {
+                if (button.contains(target)) {
+                    clickedButton = true;
+                }
+            });
+
+            if (selector && !selector.contains(target) && !clickedButton) {
+                isPromptSelectorOpen = false;
+            }
+        }
+    }
 </script>
 
 <div class="ai-sidebar">
@@ -1059,6 +1198,15 @@
             >
                 <svg class="b3-button__icon"><use xlink:href="#iconSearch"></use></svg>
             </button>
+            <div class="ai-sidebar__prompt-actions">
+                <button
+                    class="b3-button b3-button--text"
+                    on:click={() => (isPromptSelectorOpen = !isPromptSelectorOpen)}
+                    title="提示词"
+                >
+                    <svg class="b3-button__icon"><use xlink:href="#iconList"></use></svg>
+                </button>
+            </div>
             <div class="ai-sidebar__model-selector-container">
                 <ModelSelector
                     {providers}
@@ -1068,7 +1216,138 @@
                 />
             </div>
         </div>
+
+        <!-- 提示词选择器下拉菜单 -->
+        {#if isPromptSelectorOpen}
+            <div class="ai-sidebar__prompt-selector">
+                <div class="ai-sidebar__prompt-list">
+                    <!-- 新建提示词按钮 -->
+                    <button
+                        class="ai-sidebar__prompt-item ai-sidebar__prompt-item--new"
+                        on:click={openPromptManager}
+                    >
+                        <svg class="ai-sidebar__prompt-item-icon">
+                            <use xlink:href="#iconAdd"></use>
+                        </svg>
+                        <span class="ai-sidebar__prompt-item-title">新建提示词</span>
+                    </button>
+
+                    {#if prompts.length > 0}
+                        <div class="ai-sidebar__prompt-divider-small"></div>
+                        {#each prompts as prompt (prompt.id)}
+                            <button
+                                class="ai-sidebar__prompt-item"
+                                on:click={() => usePrompt(prompt)}
+                                title={prompt.content}
+                            >
+                                <span class="ai-sidebar__prompt-item-title">{prompt.title}</span>
+                                <button
+                                    class="ai-sidebar__prompt-item-edit"
+                                    on:click|stopPropagation={() => editPrompt(prompt)}
+                                    title="编辑"
+                                >
+                                    <svg class="b3-button__icon">
+                                        <use xlink:href="#iconEdit"></use>
+                                    </svg>
+                                </button>
+                            </button>
+                        {/each}
+                    {/if}
+                </div>
+            </div>
+        {/if}
     </div>
+
+    <!-- 提示词管理对话框 -->
+    {#if isPromptManagerOpen}
+        <div class="ai-sidebar__prompt-dialog">
+            <div class="ai-sidebar__prompt-dialog-overlay" on:click={closePromptManager}></div>
+            <div class="ai-sidebar__prompt-dialog-content">
+                <div class="ai-sidebar__prompt-dialog-header">
+                    <h4>{editingPrompt ? '编辑提示词' : '新建提示词'}</h4>
+                    <button class="b3-button b3-button--text" on:click={closePromptManager}>
+                        <svg class="b3-button__icon"><use xlink:href="#iconClose"></use></svg>
+                    </button>
+                </div>
+                <div class="ai-sidebar__prompt-dialog-body">
+                    <div class="ai-sidebar__prompt-form">
+                        <div class="ai-sidebar__prompt-form-field">
+                            <label class="ai-sidebar__prompt-form-label">标题</label>
+                            <input
+                                type="text"
+                                bind:value={newPromptTitle}
+                                placeholder="输入提示词标题"
+                                class="b3-text-field"
+                            />
+                        </div>
+                        <div class="ai-sidebar__prompt-form-field">
+                            <label class="ai-sidebar__prompt-form-label">内容</label>
+                            <textarea
+                                bind:value={newPromptContent}
+                                placeholder="输入提示词内容"
+                                class="b3-text-field ai-sidebar__prompt-textarea"
+                                rows="6"
+                            ></textarea>
+                        </div>
+                        <div class="ai-sidebar__prompt-form-actions">
+                            <button
+                                class="b3-button b3-button--cancel"
+                                on:click={closePromptManager}
+                            >
+                                取消
+                            </button>
+                            <button class="b3-button b3-button--primary" on:click={saveNewPrompt}>
+                                {editingPrompt ? '更新' : '保存'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {#if prompts.length > 0}
+                        <div class="ai-sidebar__prompt-divider"></div>
+                        <div class="ai-sidebar__prompt-saved-list">
+                            <h5 class="ai-sidebar__prompt-saved-title">已保存的提示词</h5>
+                            <div class="ai-sidebar__prompt-saved-items">
+                                {#each prompts as prompt (prompt.id)}
+                                    <div class="ai-sidebar__prompt-saved-item">
+                                        <div class="ai-sidebar__prompt-saved-info">
+                                            <div class="ai-sidebar__prompt-saved-item-title">
+                                                {prompt.title}
+                                            </div>
+                                            <div class="ai-sidebar__prompt-saved-item-content">
+                                                {prompt.content.length > 100
+                                                    ? prompt.content.substring(0, 100) + '...'
+                                                    : prompt.content}
+                                            </div>
+                                        </div>
+                                        <div class="ai-sidebar__prompt-saved-actions">
+                                            <button
+                                                class="b3-button b3-button--text"
+                                                on:click={() => editPrompt(prompt)}
+                                                title="编辑"
+                                            >
+                                                <svg class="b3-button__icon">
+                                                    <use xlink:href="#iconEdit"></use>
+                                                </svg>
+                                            </button>
+                                            <button
+                                                class="b3-button b3-button--text"
+                                                on:click={() => deletePrompt(prompt.id)}
+                                                title="删除"
+                                            >
+                                                <svg class="b3-button__icon">
+                                                    <use xlink:href="#iconTrashcan"></use>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            </div>
+        </div>
+    {/if}
 
     <!-- 搜索对话框 -->
     {#if isSearchDialogOpen}
@@ -1568,10 +1847,124 @@
         flex-shrink: 0;
     }
 
+    .ai-sidebar__prompt-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
     .ai-sidebar__model-selector-container {
         flex: 1;
         display: flex;
         justify-content: flex-end;
+    }
+
+    // 提示词选择器样式
+    .ai-sidebar__prompt-selector {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        background: var(--b3-theme-background);
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 8px;
+        z-index: 100;
+    }
+
+    .ai-sidebar__prompt-list {
+        padding: 4px;
+    }
+
+    .ai-sidebar__prompt-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-align: left;
+        padding: 8px 12px;
+        border: none;
+        background: none;
+        color: var(--b3-theme-on-background);
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        font-size: 14px;
+        position: relative;
+
+        &:hover {
+            background: var(--b3-theme-primary-lightest);
+
+            .ai-sidebar__prompt-item-edit {
+                opacity: 1;
+            }
+        }
+    }
+
+    .ai-sidebar__prompt-item--new {
+        font-weight: 600;
+        color: var(--b3-theme-primary);
+
+        &:hover {
+            background: var(--b3-theme-primary-lighter);
+        }
+    }
+
+    .ai-sidebar__prompt-item-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    .ai-sidebar__prompt-item-title {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ai-sidebar__prompt-item-edit {
+        opacity: 0;
+        padding: 4px;
+        border: none;
+        background: none;
+        color: var(--b3-theme-on-surface-light);
+        cursor: pointer;
+        border-radius: 4px;
+        transition:
+            opacity 0.2s,
+            background-color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+
+        &:hover {
+            background: var(--b3-theme-surface);
+            color: var(--b3-theme-primary);
+        }
+
+        .b3-button__icon {
+            width: 14px;
+            height: 14px;
+        }
+    }
+
+    .ai-sidebar__prompt-divider-small {
+        height: 1px;
+        background: var(--b3-border-color);
+        margin: 4px 0;
+    }
+
+    .ai-sidebar__prompt-empty {
+        padding: 16px;
+        text-align: center;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 13px;
     }
 
     .ai-sidebar__send-btn {
@@ -1597,6 +1990,157 @@
         to {
             transform: rotate(360deg);
         }
+    }
+
+    // 提示词管理对话框样式
+    .ai-sidebar__prompt-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ai-sidebar__prompt-dialog-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .ai-sidebar__prompt-dialog-content {
+        position: relative;
+        width: 90%;
+        max-width: 600px;
+        background: var(--b3-theme-background);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        max-height: 80vh;
+    }
+
+    .ai-sidebar__prompt-dialog-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        border-bottom: 1px solid var(--b3-border-color);
+
+        h4 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+    }
+
+    .ai-sidebar__prompt-dialog-body {
+        padding: 16px;
+        overflow-y: auto;
+    }
+
+    .ai-sidebar__prompt-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .ai-sidebar__prompt-form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .ai-sidebar__prompt-form-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--b3-theme-on-background);
+    }
+
+    .ai-sidebar__prompt-textarea {
+        min-height: 120px;
+        resize: vertical;
+        font-family: var(--b3-font-family);
+    }
+
+    .ai-sidebar__prompt-form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .ai-sidebar__prompt-divider {
+        margin: 24px 0;
+        border-top: 1px solid var(--b3-border-color);
+    }
+
+    .ai-sidebar__prompt-saved-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ai-sidebar__prompt-saved-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--b3-theme-on-background);
+    }
+
+    .ai-sidebar__prompt-saved-items {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .ai-sidebar__prompt-saved-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        background: var(--b3-theme-surface);
+        border-radius: 6px;
+        border: 1px solid var(--b3-border-color);
+
+        &:hover {
+            background: var(--b3-theme-primary-lightest);
+        }
+    }
+
+    .ai-sidebar__prompt-saved-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ai-sidebar__prompt-saved-item-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--b3-theme-on-surface);
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ai-sidebar__prompt-saved-item-content {
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .ai-sidebar__prompt-saved-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
     }
 
     // 搜索对话框样式
