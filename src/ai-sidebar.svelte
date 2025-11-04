@@ -53,6 +53,9 @@
     // 中断控制
     let abortController: AbortController | null = null;
 
+    // 自动滚动控制
+    let autoScroll = true;
+
     // 上下文文档
     let contextDocuments: ContextDocument[] = [];
     let isSearchDialogOpen = false;
@@ -87,6 +90,9 @@
     let currentModelId = '';
     let providers: Record<string, ProviderConfig> = {};
 
+    // 显示设置
+    let messageFontSize = 12;
+
     // 订阅设置变化
     let unsubscribe: () => void;
 
@@ -100,6 +106,9 @@
         providers = settings.aiProviders || {};
         currentProvider = settings.currentProvider || '';
         currentModelId = settings.currentModelId || '';
+
+        // 初始化字体大小设置
+        messageFontSize = settings.messageFontSize || 12;
 
         // 加载历史会话
         await loadSessions();
@@ -129,6 +138,11 @@
                 }
                 if (newSettings.currentModelId) {
                     currentModelId = newSettings.currentModelId;
+                }
+
+                // 实时更新字体大小设置
+                if (newSettings.messageFontSize !== undefined) {
+                    messageFontSize = newSettings.messageFontSize;
                 }
 
                 // 更新系统提示词
@@ -371,10 +385,33 @@
         currentAttachments = currentAttachments.filter((_, i) => i !== index);
     }
 
+    // 检查是否在底部
+    function isAtBottom() {
+        if (!messagesContainer) return true;
+        const threshold = 100; // 100px的阈值
+        const scrollBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight;
+        return scrollBottom < threshold;
+    }
+
+    // 处理滚动事件
+    function handleScroll() {
+        if (!messagesContainer) return;
+        
+        const atBottom = isAtBottom();
+        
+        // 如果用户滚动到底部附近，恢复自动滚动
+        if (atBottom) {
+            autoScroll = true;
+        } else if (isLoading) {
+            // 如果正在加载且用户滚动离开底部，停止自动滚动
+            autoScroll = false;
+        }
+    }
+
     // 滚动到底部
-    async function scrollToBottom() {
+    async function scrollToBottom(force = false) {
         await tick();
-        if (messagesContainer) {
+        if (messagesContainer && (force || autoScroll)) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
     }
@@ -456,8 +493,9 @@
         streamingThinking = '';
         isThinkingPhase = false;
         hasUnsavedChanges = true;
+        autoScroll = true; // 发送新消息时启用自动滚动
 
-        await scrollToBottom();
+        await scrollToBottom(true);
 
         // 准备发送给AI的消息（包含系统提示词和上下文文档）
         // 深拷贝消息数组，避免修改原始消息
@@ -1698,8 +1736,9 @@
         streamingMessage = '';
         streamingThinking = '';
         isThinkingPhase = false;
+        autoScroll = true; // 重新生成时启用自动滚动
 
-        await scrollToBottom();
+        await scrollToBottom(true);
 
         // 准备发送给AI的消息（包含系统提示词和上下文文档）
         // 深拷贝消息数组，避免修改原始消息
@@ -1722,9 +1761,10 @@
                     const contentParts: any[] = [];
 
                     // 先添加用户输入
-                    let textContent = typeof lastUserMessage.content === 'string' 
-                        ? lastUserMessage.content 
-                        : getMessageText(lastUserMessage.content);
+                    let textContent =
+                        typeof lastUserMessage.content === 'string'
+                            ? lastUserMessage.content
+                            : getMessageText(lastUserMessage.content);
 
                     // 然后添加上下文文档（如果有）
                     if (contextDocuments.length > 0) {
@@ -1762,9 +1802,10 @@
                     lastMessage.content = contentParts;
                 } else {
                     // 纯文本格式
-                    let enhancedContent = typeof lastUserMessage.content === 'string'
-                        ? lastUserMessage.content
-                        : getMessageText(lastUserMessage.content);
+                    let enhancedContent =
+                        typeof lastUserMessage.content === 'string'
+                            ? lastUserMessage.content
+                            : getMessageText(lastUserMessage.content);
 
                     // 添加文本文件附件
                     if (lastUserMessage.attachments && lastUserMessage.attachments.length > 0) {
@@ -1965,6 +2006,7 @@
         on:dragover={handleDragOver}
         on:dragleave={handleDragLeave}
         on:drop={handleDrop}
+        on:scroll={handleScroll}
     >
         {#each messages as message, index (index)}
             {#if message.role !== 'system'}
@@ -2033,7 +2075,12 @@
                     {/if}
 
                     <!-- 显示模式 -->
-                    <div class="ai-message__content protyle-wysiwyg">
+                    <div
+                        class="ai-message__content protyle-wysiwyg"
+                        style={messageFontSize && messageFontSize !== 12
+                            ? `font-size: ${messageFontSize}px;`
+                            : ''}
+                    >
                         {@html formatMessage(message.content)}
                     </div>
 
@@ -2114,7 +2161,12 @@
                 {/if}
 
                 {#if streamingMessage}
-                    <div class="ai-message__content protyle-wysiwyg">
+                    <div
+                        class="ai-message__content protyle-wysiwyg"
+                        style={messageFontSize && messageFontSize !== 12
+                            ? `font-size: ${messageFontSize}px;`
+                            : ''}
+                    >
                         {@html formatMessage(streamingMessage)}
                     </div>
                 {/if}
