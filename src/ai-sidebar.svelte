@@ -1701,13 +1701,100 @@
 
         await scrollToBottom();
 
-        // 准备发送给AI的消息
+        // 准备发送给AI的消息（包含系统提示词和上下文文档）
+        // 深拷贝消息数组，避免修改原始消息
         const messagesToSend = messages
             .filter(msg => msg.role !== 'system')
             .map(msg => ({
                 role: msg.role,
                 content: msg.content,
             }));
+
+        // 处理最后一条用户消息，添加附件和上下文文档
+        if (messagesToSend.length > 0) {
+            const lastMessage = messagesToSend[messagesToSend.length - 1];
+            if (lastMessage.role === 'user') {
+                const lastUserMessage = messages[messages.length - 1];
+                const hasImages = lastUserMessage.attachments?.some(att => att.type === 'image');
+
+                // 如果有图片附件，使用多模态格式
+                if (hasImages) {
+                    const contentParts: any[] = [];
+
+                    // 先添加用户输入
+                    let textContent = typeof lastUserMessage.content === 'string' 
+                        ? lastUserMessage.content 
+                        : getMessageText(lastUserMessage.content);
+
+                    // 然后添加上下文文档（如果有）
+                    if (contextDocuments.length > 0) {
+                        const contextText = contextDocuments
+                            .map(doc => `## 文档: ${doc.title}\n\n${doc.content}`)
+                            .join('\n\n---\n\n');
+                        textContent += `\n\n---\n\n以下是相关文档作为上下文：\n\n${contextText}`;
+                    }
+
+                    contentParts.push({ type: 'text', text: textContent });
+
+                    // 添加图片
+                    lastUserMessage.attachments?.forEach(att => {
+                        if (att.type === 'image') {
+                            contentParts.push({
+                                type: 'image_url',
+                                image_url: { url: att.data },
+                            });
+                        }
+                    });
+
+                    // 添加文本文件内容
+                    const fileTexts = lastUserMessage.attachments
+                        ?.filter(att => att.type === 'file')
+                        .map(att => `## 文件: ${att.name}\n\n\`\`\`\n${att.data}\n\`\`\`\n`)
+                        .join('\n\n---\n\n');
+
+                    if (fileTexts) {
+                        contentParts.push({
+                            type: 'text',
+                            text: `\n\n以下是附件文件内容：\n\n${fileTexts}`,
+                        });
+                    }
+
+                    lastMessage.content = contentParts;
+                } else {
+                    // 纯文本格式
+                    let enhancedContent = typeof lastUserMessage.content === 'string'
+                        ? lastUserMessage.content
+                        : getMessageText(lastUserMessage.content);
+
+                    // 添加文本文件附件
+                    if (lastUserMessage.attachments && lastUserMessage.attachments.length > 0) {
+                        const attachmentTexts = lastUserMessage.attachments
+                            .map(att => {
+                                if (att.type === 'file') {
+                                    return `## 文件: ${att.name}\n\n\`\`\`\n${att.data}\n\`\`\`\n`;
+                                }
+                                return '';
+                            })
+                            .filter(Boolean)
+                            .join('\n\n---\n\n');
+
+                        if (attachmentTexts) {
+                            enhancedContent += `\n\n---\n\n以下是附件内容：\n\n${attachmentTexts}`;
+                        }
+                    }
+
+                    // 添加上下文文档
+                    if (contextDocuments.length > 0) {
+                        const contextText = contextDocuments
+                            .map(doc => `## 文档: ${doc.title}\n\n${doc.content}`)
+                            .join('\n\n---\n\n');
+                        enhancedContent += `\n\n---\n\n以下是相关文档作为上下文：\n\n${contextText}`;
+                    }
+
+                    lastMessage.content = enhancedContent;
+                }
+            }
+        }
 
         if (settings.aiSystemPrompt) {
             messagesToSend.unshift({ role: 'system', content: settings.aiSystemPrompt });
