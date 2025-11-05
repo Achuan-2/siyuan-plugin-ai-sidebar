@@ -1,3 +1,15 @@
+## v0.0.9 / 20251106
+
+- ✨ 支持多选文档添加到上下文
+- ✨ 思源笔记添加一个工具栏按钮，支持点击之后根据选择的文字进行AI问答，支持多轮问答，问答使用弹窗
+- ✨ 搜索文档未输入关键词默认显示当前文档，支持添加到上下文
+
+---
+
+- ✨ Support adding multiple selected documents to context
+- ✨ Add a toolbar button in SiYuan Note to support AI Q&A based on
+- ✨ When searching documents, if no keywords are entered, the current document is displayed by default, and it can be added to the context
+
 ## v0.0.8 / 20251105
 
 - 支持AI修改思源笔记内容

@@ -15,8 +15,8 @@
             props: {
                 plugin: plugin,
                 initialMessage: initialMessage,
-                mode: 'dialog'
-            }
+                mode: 'dialog',
+            },
         });
     });
 

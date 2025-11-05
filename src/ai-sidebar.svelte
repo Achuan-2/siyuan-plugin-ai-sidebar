@@ -1465,10 +1465,12 @@
             if (!searchKeyword.trim()) {
                 const currentProtyle = getActiveEditor(false)?.protyle;
                 const blockId = currentProtyle?.block?.id;
-                
+
                 if (blockId) {
                     // 获取当前文档信息
-                    const blocks = await sql(`SELECT * FROM blocks WHERE id = '${blockId}' OR root_id = '${blockId}'`);
+                    const blocks = await sql(
+                        `SELECT * FROM blocks WHERE id = '${blockId}' OR root_id = '${blockId}'`
+                    );
                     if (blocks && blocks.length > 0) {
                         // 查找文档块
                         const docBlock = blocks.find(b => b.type === 'd');
@@ -1477,7 +1479,9 @@
                         } else {
                             // 如果当前块不是文档块，获取所属文档
                             const rootId = blocks[0].root_id;
-                            const rootBlocks = await sql(`SELECT * FROM blocks WHERE id = '${rootId}' AND type = 'd'`);
+                            const rootBlocks = await sql(
+                                `SELECT * FROM blocks WHERE id = '${rootId}' AND type = 'd'`
+                            );
                             searchResults = rootBlocks || [];
                         }
                     } else {
@@ -3344,16 +3348,23 @@
                                     <button
                                         class="b3-button b3-button--text"
                                         on:click={() =>
-                                            addDocumentToContext(result.id, result.content || t('common.untitled'))}
+                                            addDocumentToContext(
+                                                result.id,
+                                                result.content || t('common.untitled')
+                                            )}
                                     >
                                         {t('aiSidebar.search.add')}
                                     </button>
                                 </div>
                             {/each}
                         {:else if !isSearching && searchKeyword}
-                            <div class="ai-sidebar__search-empty">{t('aiSidebar.search.noResults')}</div>
+                            <div class="ai-sidebar__search-empty">
+                                {t('aiSidebar.search.noResults')}
+                            </div>
                         {:else if !isSearching && !searchKeyword}
-                            <div class="ai-sidebar__search-empty">{t('aiSidebar.search.noCurrentDoc')}</div>
+                            <div class="ai-sidebar__search-empty">
+                                {t('aiSidebar.search.noCurrentDoc')}
+                            </div>
                         {/if}
                     </div>
                 </div>

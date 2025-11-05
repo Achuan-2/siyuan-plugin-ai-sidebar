@@ -107,7 +107,7 @@ export default class PluginSample extends Plugin {
     private async openChatDialog(protyle: any) {
         // 获取选中的文本
         let selectedText = '';
-        
+
         try {
             // 尝试获取选中的内容
             const selection = window.getSelection();
