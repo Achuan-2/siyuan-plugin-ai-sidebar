@@ -91,7 +91,7 @@ export default class PluginSample extends Plugin {
         toolbar.push({
             name: "ai-chat-with-selection",
             icon: "iconCopilot",
-            hotkey: "⇧⌘A",
+            hotkey: "⌥⌘C",
             tipPosition: "n",
             tip: t("toolbar.aiChat"),
             click: (protyle: any) => {
