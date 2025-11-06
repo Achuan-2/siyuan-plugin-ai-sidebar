@@ -295,30 +295,29 @@
             </div>
         </div>
 
-        <div>
-            <div class="b3-label__text">
-                {t('platform.apiUrl')}
-                {#if defaultApiUrl}
-                    <span class="label-hint">（{t('platform.default')}: {defaultApiUrl}）</span>
-                {/if}
-            </div>
-            <input
-                class="b3-text-field fn__flex-1"
-                type="text"
-                style="width: 100%"
-                bind:value={config.customApiUrl}
-                on:change={() => dispatch('change')}
-                placeholder={defaultApiUrl || t('platform.apiUrlPlaceholder')}
-            />
-            {#if apiPreview}
-                <div class="api-preview">
-                    <div class="api-preview__url">{apiPreview}</div>
+        {#if isCustomProvider}
+            <div>
+                <div class="b3-label__text">
+                    {t('platform.apiUrl')}
                 </div>
-            {/if}
-            <div class="b3-label__text label-description">
-                {t('platform.apiUrlHint')}
+                <input
+                    class="b3-text-field fn__flex-1"
+                    type="text"
+                    style="width: 100%"
+                    bind:value={config.customApiUrl}
+                    on:change={() => dispatch('change')}
+                    placeholder={t('platform.apiUrlPlaceholder')}
+                />
+                {#if apiPreview}
+                    <div class="api-preview">
+                        <div class="api-preview__url">{apiPreview}</div>
+                    </div>
+                {/if}
+                <div class="b3-label__text label-description">
+                    {t('platform.apiUrlHint')}
+                </div>
             </div>
-        </div>
+        {/if}
 
         <div>
             <div class="b3-label__text">{t('models.management')}</div>
