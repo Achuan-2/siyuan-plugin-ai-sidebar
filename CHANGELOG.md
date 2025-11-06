@@ -1,3 +1,7 @@
+## v0.2.0 / 20251106
+
+- ✨ 新增agent模式 [#9](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/9)
+
 
 ## v0.1.2 / 20251106
 
