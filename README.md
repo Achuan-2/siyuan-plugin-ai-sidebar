@@ -61,7 +61,7 @@ See [CHANGELOG.md](https://cdn.jsdelivr.net/gh/Achuan-2/siyuan-plugin-copilot@ma
   - Flexibly remove unwanted documents
   - Support adding multiple documents simultaneously
 
-## ✏️ Support Modifying SiYuan Note Content
+### ✏️ Support Modifying SiYuan Note Content
 
 - Support direct modification and adding new blocks based on SiYuan Note block content
 - Support automatic approval for edits
