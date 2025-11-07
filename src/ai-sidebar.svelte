@@ -3541,35 +3541,6 @@
                     {#if message.role === 'tool'}
                         <!-- 不渲染 tool 消息 -->
                     {:else}
-                        <!-- 显示附件 -->
-                        {#if message.attachments && message.attachments.length > 0}
-                            <div class="ai-message__attachments">
-                                {#each message.attachments as attachment}
-                                    <div class="ai-message__attachment">
-                                        {#if attachment.type === 'image'}
-                                            <img
-                                                src={attachment.data}
-                                                alt={attachment.name}
-                                                class="ai-message__attachment-image"
-                                            />
-                                            <span class="ai-message__attachment-name">
-                                                {attachment.name}
-                                            </span>
-                                        {:else}
-                                            <div class="ai-message__attachment-file">
-                                                <svg class="ai-message__attachment-icon">
-                                                    <use xlink:href="#iconFile"></use>
-                                                </svg>
-                                                <span class="ai-message__attachment-name">
-                                                    {attachment.name}
-                                                </span>
-                                            </div>
-                                        {/if}
-                                    </div>
-                                {/each}
-                            </div>
-                        {/if}
-
                         <!-- 显示思考过程 -->
                         {#if message.role === 'assistant' && message.thinking}
                             {@const thinkingIndex = messageIndex + msgIndex}
@@ -3605,25 +3576,60 @@
                             {@html formatMessage(message.content)}
                         </div>
 
-                        <!-- 显示上下文文档 -->
-                        {#if message.contextDocuments && message.contextDocuments.length > 0}
+                        <!-- 显示上下文文档和附件 -->
+                        {#if (message.contextDocuments && message.contextDocuments.length > 0) || (message.attachments && message.attachments.length > 0)}
                             <div class="ai-message__context-docs">
                                 <div class="ai-message__context-docs-title">
-                                    📎 {t('aiSidebar.context.content')} ({message.contextDocuments
-                                        .length})
+                                    📎 {t('aiSidebar.context.content')}
+                                    {#if message.contextDocuments && message.contextDocuments.length > 0}
+                                        ({message.contextDocuments.length})
+                                    {/if}
                                 </div>
-                                <div class="ai-message__context-docs-list">
-                                    {#each message.contextDocuments as doc}
-                                        <button
-                                            class="ai-message__context-doc-link"
-                                            on:click={() => openDocument(doc.id)}
-                                            title={doc.title}
-                                        >
-                                            {doc.type === 'doc' ? '📄' : '📝'}
-                                            {doc.title}
-                                        </button>
-                                    {/each}
-                                </div>
+                                
+                                <!-- 显示附件 -->
+                                {#if message.attachments && message.attachments.length > 0}
+                                    <div class="ai-message__context-docs-list">
+                                        {#each message.attachments as attachment}
+                                            <div class="ai-message__attachment">
+                                                {#if attachment.type === 'image'}
+                                                    <img
+                                                        src={attachment.data}
+                                                        alt={attachment.name}
+                                                        class="ai-message__attachment-image"
+                                                    />
+                                                    <span class="ai-message__attachment-name">
+                                                        {attachment.name}
+                                                    </span>
+                                                {:else}
+                                                    <div class="ai-message__attachment-file">
+                                                        <svg class="ai-message__attachment-icon">
+                                                            <use xlink:href="#iconFile"></use>
+                                                        </svg>
+                                                        <span class="ai-message__attachment-name">
+                                                            {attachment.name}
+                                                        </span>
+                                                    </div>
+                                                {/if}
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {/if}
+                                
+                                <!-- 显示上下文文档链接 -->
+                                {#if message.contextDocuments && message.contextDocuments.length > 0}
+                                    <div class="ai-message__context-docs-list">
+                                        {#each message.contextDocuments as doc}
+                                            <button
+                                                class="ai-message__context-doc-link"
+                                                on:click={() => openDocument(doc.id)}
+                                                title={doc.title}
+                                            >
+                                                {doc.type === 'doc' ? '📄' : '📝'}
+                                                {doc.title}
+                                            </button>
+                                        {/each}
+                                    </div>
+                                {/if}
                             </div>
                         {/if}
 
