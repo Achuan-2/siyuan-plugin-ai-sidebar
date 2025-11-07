@@ -8,7 +8,7 @@
     export let isOpen = false;
 
     const dispatch = createEventDispatcher();
-    
+
     // 下拉菜单位置
     let dropdownTop = 0;
     let dropdownLeft = 0;
@@ -80,17 +80,17 @@
     // 计算下拉菜单位置
     async function updateDropdownPosition() {
         if (!buttonElement || !isOpen) return;
-        
+
         await tick();
-        
+
         const rect = buttonElement.getBoundingClientRect();
         const dropdownWidth = dropdownElement?.offsetWidth || 320;
         const dropdownHeight = dropdownElement?.offsetHeight || 400;
-        
+
         // 计算垂直位置
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
-        
+
         if (spaceBelow >= dropdownHeight || spaceBelow >= spaceAbove) {
             // 显示在按钮下方
             dropdownTop = rect.bottom + 4;
@@ -98,15 +98,15 @@
             // 显示在按钮上方
             dropdownTop = rect.top - dropdownHeight - 4;
         }
-        
+
         // 计算水平位置（右对齐）
         dropdownLeft = rect.right - dropdownWidth;
-        
+
         // 确保下拉菜单不会超出视口左边界
         if (dropdownLeft < 8) {
             dropdownLeft = 8;
         }
-        
+
         // 确保下拉菜单不会超出视口右边界
         if (dropdownLeft + dropdownWidth > window.innerWidth - 8) {
             dropdownLeft = window.innerWidth - dropdownWidth - 8;
@@ -241,9 +241,9 @@
     </button>
 
     {#if isOpen}
-        <div 
+        <div
             bind:this={dropdownElement}
-            class="session-manager__dropdown" 
+            class="session-manager__dropdown"
             style="top: {dropdownTop}px; left: {dropdownLeft}px;"
         >
             <div class="session-manager__header">
