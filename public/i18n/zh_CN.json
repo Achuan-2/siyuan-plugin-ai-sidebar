@@ -212,6 +212,12 @@
             "delete": "删除",
             "save": "保存会话",
             "load": "加载会话",
+            "pin": "钉住",
+            "unpin": "取消钉住",
+            "pinned": "已钉住会话",
+            "unpinned": "已取消钉住",
+            "export": "导出到文件",
+            "exportSuccess": "会话已导出",
             "saveToNote": {
                 "title": "保存到笔记",
                 "documentName": "文档名称",

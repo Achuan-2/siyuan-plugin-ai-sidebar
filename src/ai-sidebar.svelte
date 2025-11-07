@@ -49,6 +49,7 @@
         messages: Message[];
         createdAt: number;
         updatedAt: number;
+        pinned?: boolean; // 是否钉住
     }
 
     let messages: Message[] = [];
@@ -3102,6 +3103,12 @@
         );
     }
 
+    // 处理会话更新（如钉住状态变化）
+    async function handleSessionUpdate(updatedSessions: ChatSession[]) {
+        sessions = updatedSessions;
+        await saveSessions();
+    }
+
     // 保存到笔记相关函数
     async function openSaveToNoteDialog(messageIndex: number | null = null) {
         if (messages.length === 0) {
@@ -4423,6 +4430,7 @@
                 on:load={e => loadSession(e.detail.sessionId)}
                 on:delete={e => deleteSession(e.detail.sessionId)}
                 on:new={newSession}
+                on:update={e => handleSessionUpdate(e.detail.sessions)}
             />
             <button
                 class="b3-button b3-button--text"

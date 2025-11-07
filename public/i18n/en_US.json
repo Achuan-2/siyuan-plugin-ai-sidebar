@@ -213,6 +213,12 @@
             "delete": "Delete",
             "save": "Save Session",
             "load": "Load Session",
+            "pin": "Pin",
+            "unpin": "Unpin",
+            "pinned": "Session pinned",
+            "unpinned": "Session unpinned",
+            "export": "Export to File",
+            "exportSuccess": "Session exported",
             "saveToNote": {
                 "title": "Save to Note",
                 "documentName": "Document Name",
