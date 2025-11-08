@@ -102,13 +102,19 @@
                 config.customApiUrl,
                 config.advancedConfig
             );
+            // 去重：使用 Map 以模型 ID 为键进行去重
+            const uniqueModelsMap = new Map();
+            models.forEach(m => {
+                if (!uniqueModelsMap.has(m.id)) {
+                    uniqueModelsMap.set(m.id, { id: m.id, name: m.name });
+                }
+            });
             // 按模型ID升序排序
-            availableModels = models
-                .map(m => ({ id: m.id, name: m.name }))
+            availableModels = Array.from(uniqueModelsMap.values())
                 .sort((a, b) => a.id.localeCompare(b.id));
             showModelSearchModal = true;
             searchQuery = '';
-            pushMsg(t('models.fetchSuccess').replace('{count}', models.length.toString()));
+            pushMsg(t('models.fetchSuccess').replace('{count}', availableModels.length.toString()));
         } catch (error) {
             pushErrMsg(`${t('models.fetchFailed')}: ${error.message}`);
             console.error('Load models error:', error);
@@ -151,7 +157,7 @@
         config.models = [...config.models, newModel];
         dispatch('change');
         pushMsg(`已添加模型: ${modelName}`);
-        searchQuery = '';
+        // 不再清空搜索关键词，方便连续添加多个模型
     }
 
     // 手动添加模型
@@ -198,13 +204,21 @@
         }
     }
 
-    // 过滤并排序模型
+    // 过滤并排序模型 - 支持空格分隔的多关键词搜索
     $: filteredModels = availableModels
-        .filter(
-            m =>
-                m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                m.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        .filter(m => {
+            if (!searchQuery.trim()) return true;
+
+            // 将搜索词按空格分割成多个关键词
+            const keywords = searchQuery.toLowerCase().trim().split(/\s+/);
+            const modelId = m.id.toLowerCase();
+            const modelName = m.name.toLowerCase();
+
+            // 所有关键词都必须在 id 或 name 中出现（并集搜索）
+            return keywords.every(
+                keyword => modelId.includes(keyword) || modelName.includes(keyword)
+            );
+        })
         .sort((a, b) => a.id.localeCompare(b.id));
 
     // 开始编辑名称
