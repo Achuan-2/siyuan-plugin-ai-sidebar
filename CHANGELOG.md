@@ -1,5 +1,11 @@
+## v0.4.1 / 20251109
 
-## v0.4.0 / 20251108
+- 🎨 思考过程默认折叠 [[[#40](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/40)](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/40)](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/40)
+- 🎨 顶栏添加打开全屏按钮 [[#39](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/39)](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/39)
+- 🎨 优化多模型响应显示方式
+
+
+## v0.4.0 / 20251109
 
 - ✨ 聊天框下方添加一个模型设置按钮
 
