@@ -1,3 +1,7 @@
+## v0.4.4 / 20251110
+- 💄 多模型dropdown窗口优化 [#44](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/44)
+- 🐛 多模型回答无法终止 [#43](https://github.com/Achuan-2/siyuan-plugin-copilot/issues/43)
+
 ## v0.4.3 / 20251110
 - 🐛 错误遗漏V3 API的模型
 
