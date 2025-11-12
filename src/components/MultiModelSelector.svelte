@@ -191,7 +191,11 @@
             }
 
             // 确保目标索引有效
-            if (targetIndex !== null && targetIndex !== draggedIndex && targetIndex !== draggedIndex + 1) {
+            if (
+                targetIndex !== null &&
+                targetIndex !== draggedIndex &&
+                targetIndex !== draggedIndex + 1
+            ) {
                 // 重新排列数组
                 const newModels = [...selectedModels];
                 const [draggedItem] = newModels.splice(draggedIndex, 1);
@@ -365,7 +369,13 @@
                 <div class="multi-model-selector__title">
                     {t('multiModel.selectModels')}
                 </div>
-                <div class="multi-model-selector__toggle" on:click|stopPropagation role="button" tabindex="0" on:keydown={(e) => e.key === 'Enter' && toggleEnableMultiModel()}>
+                <div
+                    class="multi-model-selector__toggle"
+                    on:click|stopPropagation
+                    role="button"
+                    tabindex="0"
+                    on:keydown={e => e.key === 'Enter' && toggleEnableMultiModel()}
+                >
                     <label>
                         <input
                             type="checkbox"
@@ -401,7 +411,9 @@
                     {#each selectedModels as model, index}
                         <!-- Drop indicator before this item -->
                         {#if dropIndicatorIndex === index}
-                            <div class="multi-model-selector__drop-indicator multi-model-selector__drop-indicator--active"></div>
+                            <div
+                                class="multi-model-selector__drop-indicator multi-model-selector__drop-indicator--active"
+                            ></div>
                         {/if}
 
                         <div
@@ -409,11 +421,11 @@
                             draggable="true"
                             role="button"
                             tabindex="0"
-                            on:dragstart={(e) => handleDragStart(e, index)}
-                            on:dragover={(e) => handleDragOver(e, index)}
-                            on:dragenter={(e) => handleDragEnter(e, index)}
+                            on:dragstart={e => handleDragStart(e, index)}
+                            on:dragover={e => handleDragOver(e, index)}
+                            on:dragenter={e => handleDragEnter(e, index)}
                             on:dragleave={handleDragLeave}
-                            on:drop={(e) => handleDrop(e, index)}
+                            on:drop={e => handleDrop(e, index)}
                             on:dragend={handleDragEnd}
                         >
                             <div class="multi-model-selector__selected-model-content">
@@ -467,7 +479,9 @@
 
                     <!-- Drop indicator after the last item -->
                     {#if dropIndicatorIndex === selectedModels.length}
-                        <div class="multi-model-selector__drop-indicator multi-model-selector__drop-indicator--active"></div>
+                        <div
+                            class="multi-model-selector__drop-indicator multi-model-selector__drop-indicator--active"
+                        ></div>
                     {/if}
                 </div>
             {/if}
