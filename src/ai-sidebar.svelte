@@ -367,6 +367,171 @@
         }
     }
 
+    // 重新生成历史消息中的单个多模型响应（history message.multiModelResponses）
+    async function regenerateHistoryModelResponse(absMessageIndex: number, responseIndex: number) {
+        const msg = messages[absMessageIndex];
+        if (!msg || !msg.multiModelResponses) {
+            pushErrMsg(t('aiSidebar.errors.noMessage'));
+            return;
+        }
+
+        const response = msg.multiModelResponses[responseIndex];
+        if (!response) {
+            pushErrMsg(t('aiSidebar.errors.noMessage'));
+            return;
+        }
+
+        if (response.isLoading) {
+            pushErrMsg(t('aiSidebar.errors.generating'));
+            return;
+        }
+
+        const config = getProviderAndModelConfig(response.provider, response.modelId);
+        if (!config) {
+            pushErrMsg(t('aiSidebar.info.noValidModel') || '无效的模型');
+            return;
+        }
+
+        const { providerConfig, modelConfig } = config;
+        if (!providerConfig || !providerConfig.apiKey) {
+            pushErrMsg(t('aiSidebar.errors.noApiKey'));
+            return;
+        }
+
+        // 标记为加载中并清空内容/错误
+        msg.multiModelResponses[responseIndex] = {
+            ...msg.multiModelResponses[responseIndex],
+            isLoading: true,
+            error: undefined,
+            content: '',
+            thinking: '',
+            thinkingCollapsed: false,
+        };
+        messages = [...messages];
+
+        // 找到该 assistant 消息之前最近的 user 消息作为上下文
+        let lastUserMessage: Message | undefined;
+        for (let i = absMessageIndex - 1; i >= 0; i--) {
+            if (messages[i].role === 'user') {
+                lastUserMessage = messages[i];
+                break;
+            }
+        }
+
+        if (!lastUserMessage) {
+            pushErrMsg(t('aiSidebar.errors.noUserMessage'));
+            msg.multiModelResponses[responseIndex].isLoading = false;
+            messages = [...messages];
+            return;
+        }
+
+        // 获取用户消息的上下文文档最新内容（如果有）
+        const contextDocumentsWithLatestContent: ContextDocument[] = [];
+        const userContextDocs = lastUserMessage.contextDocuments || [];
+        for (const doc of userContextDocs) {
+            try {
+                let content: string;
+                if (chatMode === 'edit') {
+                    const blockData = await getBlockKramdown(doc.id);
+                    content = (blockData && blockData.kramdown) || doc.content;
+                } else {
+                    const data = await exportMdContent(doc.id, false, false, 2, 0, false);
+                    content = (data && data.content) || doc.content;
+                }
+                contextDocumentsWithLatestContent.push({
+                    id: doc.id,
+                    title: doc.title,
+                    content,
+                    type: doc.type,
+                });
+            } catch (error) {
+                console.error(`Failed to fetch latest content for block ${doc.id}:`, error);
+                contextDocumentsWithLatestContent.push(doc);
+            }
+        }
+
+        const userContent =
+            typeof lastUserMessage.content === 'string'
+                ? lastUserMessage.content
+                : getMessageText(lastUserMessage.content);
+        const userMessage: Message = {
+            role: 'user',
+            content: userContent,
+            attachments: lastUserMessage.attachments,
+            contextDocuments:
+                contextDocumentsWithLatestContent.length > 0
+                    ? contextDocumentsWithLatestContent
+                    : undefined,
+        };
+
+        const messagesToSend = prepareMessagesForAI(
+            messages,
+            contextDocumentsWithLatestContent,
+            userContent,
+            userMessage
+        );
+
+        const localAbort = new AbortController();
+        try {
+            let fullText = '';
+            let thinking = '';
+
+            await chat(
+                response.provider,
+                {
+                    apiKey: providerConfig.apiKey,
+                    model: modelConfig.id,
+                    messages: messagesToSend,
+                    temperature: tempModelSettings.temperature,
+                    maxTokens: modelConfig.maxTokens > 0 ? modelConfig.maxTokens : undefined,
+                    stream: true,
+                    signal: localAbort.signal,
+                    enableThinking: modelConfig.capabilities?.thinking || false,
+                    onThinkingChunk: async (chunk: string) => {
+                        thinking += chunk;
+                        msg.multiModelResponses[responseIndex].thinking = thinking;
+                        messages = [...messages];
+                    },
+                    onThinkingComplete: () => {
+                        if (msg.multiModelResponses[responseIndex].thinking) {
+                            msg.multiModelResponses[responseIndex].thinkingCollapsed = true;
+                            messages = [...messages];
+                        }
+                    },
+                    onChunk: async (chunk: string) => {
+                        fullText += chunk;
+                        msg.multiModelResponses[responseIndex].content = fullText;
+                        messages = [...messages];
+                    },
+                    onComplete: async (text: string) => {
+                        msg.multiModelResponses[responseIndex].content = convertLatexToMarkdown(text);
+                        msg.multiModelResponses[responseIndex].thinking = thinking;
+                        msg.multiModelResponses[responseIndex].isLoading = false;
+                        if (thinking && !msg.multiModelResponses[responseIndex].thinkingCollapsed) {
+                            msg.multiModelResponses[responseIndex].thinkingCollapsed = true;
+                        }
+                        messages = [...messages];
+                    },
+                    onError: (error: Error) => {
+                        if (error.message !== 'Request aborted') {
+                            msg.multiModelResponses[responseIndex].error = error.message;
+                            msg.multiModelResponses[responseIndex].isLoading = false;
+                            messages = [...messages];
+                        }
+                    },
+                },
+                providerConfig.customApiUrl,
+                providerConfig.advancedConfig
+            );
+        } catch (error) {
+            if ((error as Error).message !== 'Request aborted') {
+                msg.multiModelResponses[responseIndex].error = (error as Error).message;
+                msg.multiModelResponses[responseIndex].isLoading = false;
+                messages = [...messages];
+            }
+        }
+    }
+
     // Agent 模式
     let isToolSelectorOpen = false;
     let selectedTools: ToolConfig[] = []; // 选中的工具配置列表
@@ -1055,6 +1220,33 @@
 
         // 等待所有请求完成
         await Promise.all(promises);
+
+        // 如果仍在等待用户选择答案，自动保存多模型响应并默认选择第一个成功的（或第一个）
+        if (isWaitingForAnswerSelection && multiModelResponses.length > 0) {
+            const firstSuccessIndex = multiModelResponses.findIndex(r => !r.error && !r.isLoading);
+            const defaultIndex = firstSuccessIndex !== -1 ? firstSuccessIndex : 0;
+
+            const assistantMessage: Message = {
+                role: 'assistant',
+                content: multiModelResponses[defaultIndex].content || '',
+                thinking: multiModelResponses[defaultIndex].thinking,
+                multiModelResponses: multiModelResponses.map((response, i) => ({
+                    ...response,
+                    isSelected: i === defaultIndex,
+                    modelName: i === defaultIndex ? ' ✅' + response.modelName : response.modelName,
+                })),
+            };
+
+            messages = [...messages, assistantMessage];
+            hasUnsavedChanges = true;
+
+            // 清除多模型状态
+            multiModelResponses = [];
+            isWaitingForAnswerSelection = false;
+            selectedAnswerIndex = null;
+            selectedTabIndex = 0;
+        }
+
         isLoading = false;
         abortController = null;
     }
@@ -5476,11 +5668,21 @@
                                                             >
                                                                 {response.modelName}
                                                             </span>
+
                                                         </div>
                                                         <div
                                                             class="ai-message__multi-model-tab-panel-actions"
                                                         >
                                                             {#if !response.error && response.content}
+                                                                                                                            <button
+                                                                    class="b3-button b3-button--text"
+                                                                    on:click={() => regenerateHistoryModelResponse(messageIndex + msgIndex, index)}
+                                                                    title={t('aiSidebar.actions.regenerate')}
+                                                                >
+                                                                    <svg class="b3-button__icon">
+                                                                        <use xlink:href="#iconRefresh"></use>
+                                                                    </svg>
+                                                                </button>
                                                                 <button
                                                                     class="b3-button b3-button--text ai-sidebar__multi-model-copy-btn"
                                                                     on:click={() =>
