@@ -204,7 +204,10 @@ SELECT * FROM blocks WHERE tag LIKE '%标签名%';
   - --b3-font-color3: 蓝色
   - --b3-font-color4: 绿色
   - --b3-font-color5: 灰色
-- 不建议频繁更新大型文档块，考虑只更新特定段落`,
+- 不建议频繁更新大型文档块，考虑只更新特定段落
+
+## 调用工具后
+- 更新块后以思源块链接格式返回，方便用户点击跳转查看`,
             parameters: {
                 type: 'object',
                 properties: {
@@ -286,7 +289,10 @@ siyuan_insert_block({
 - 如果指定parentID，会作为子块追加到父块的最前面
 - 如果指定appendParentID，会作为子块追加到父块的最后面
 - previousID和nextID用于在同级块中定位
-- 插入大量内容时考虑分批插入`,
+- 插入大量内容时考虑分批插入
+
+## 调用工具后
+- 插入块后以思源块链接格式返回，方便用户点击跳转查看`,
             parameters: {
                 type: 'object',
                 properties: {
