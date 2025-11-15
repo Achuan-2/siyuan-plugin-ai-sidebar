@@ -139,7 +139,7 @@
     function deletePreset(presetId: string) {
         // 临时移除外部点击监听器，防止确认对话框关闭dropdown
         document.removeEventListener('click', closeOnOutsideClick);
-        
+
         confirm(
             t('aiSidebar.modelSettings.deletePreset'),
             t('aiSidebar.modelSettings.confirmDelete'),
@@ -151,7 +151,7 @@
                     await saveSelectedPresetId('');
                 }
                 pushMsg(t('aiSidebar.modelSettings.presetDeleted'));
-                
+
                 // 重新添加外部点击监听器
                 setTimeout(() => {
                     if (isOpen) {
