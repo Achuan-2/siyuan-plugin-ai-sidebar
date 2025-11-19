@@ -286,11 +286,35 @@ export async function fetchModels(
                 provider: config.name
             }));
         } else {
-            return (data.data || []).map((model: any) => ({
-                id: model.id,
-                name: model.id,
-                provider: config.name
-            }));
+            // 尝试多种可能的响应格式以支持自定义API
+            let modelsArray: any[] = [];
+            if (Array.isArray(data)) {
+                modelsArray = data;
+            } else if (data.data && Array.isArray(data.data)) {
+                modelsArray = data.data;
+            } else if (data.models && Array.isArray(data.models)) {
+                modelsArray = data.models;
+            } else {
+                // 如果都不是，尝试将data作为单个model或空数组
+                modelsArray = [];
+            }
+
+            return modelsArray.map((model: any) => {
+                // 处理不同格式的model对象
+                if (typeof model === 'string') {
+                    return {
+                        id: model,
+                        name: model,
+                        provider: config.name
+                    };
+                } else {
+                    return {
+                        id: model.id || model.name || model,
+                        name: model.name || model.id || model,
+                        provider: config.name
+                    };
+                }
+            });
         }
     } catch (error) {
         console.error('Error fetching models:', error);
